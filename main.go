@@ -19,9 +19,7 @@ var amountToConvert int
 var exchangeRates map[string]string
 
 // Structs to match the JSON structure
-type ExchangeRa
-
-tes struct {
+type ExchangeRates struct {
 	Data RatesData `json:"data"`
 }
 

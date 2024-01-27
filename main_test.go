@@ -2,6 +2,7 @@ package main
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
+	"os"
 	"testing"
 )
 
@@ -222,5 +223,12 @@ func TestPrintCurrencyPairs(t *testing.T) {
 		err := PrintCurrencyPairs(x)
 		So(err, ShouldBeNil)
 
+	})
+}
+
+func TestCli(t *testing.T) {
+	Convey("Testing The Main Function", t, func() {
+		os.Args[1] = "100"
+		So(main, ShouldNotPanic)
 	})
 }

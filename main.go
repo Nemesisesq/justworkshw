@@ -89,6 +89,12 @@ func getApp() *cli.App {
 			if command == "" {
 				return fmt.Errorf("a command is required")
 			}
+			var erramt error
+			amountToConvert, erramt = strconv.ParseFloat(c.Args().Get(0), 64)
+
+			if erramt != nil {
+				return erramt
+			}
 
 			stringList := c.String("strings")
 			numberList := c.String("numbers")
@@ -117,7 +123,7 @@ func PrintCurrencyPairs(currencyPairs []CurrencyConversionPair) error {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("$%v => %v %v", pair.amountToConvertPCT(), convert, pair.CryptoName)
+		fmt.Printf("\n$%v => %v %v\n", pair.amountToConvertPCT(), convert, pair.CryptoName)
 	}
 	return nil
 }

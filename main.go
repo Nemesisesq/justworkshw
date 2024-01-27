@@ -13,7 +13,9 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var amountToConvert int
+var FetchExchangeRates = fetchExchangeRates
+
+var amountToConvert float64
 
 // Global variable to store exchange rates
 var exchangeRates map[string]string
@@ -30,30 +32,41 @@ type RatesData struct {
 
 type CurrencyConversionPair struct {
 	CryptoName  string
-	PctOfAmount int
+	PctOfAmount float64
 }
 
-func (ccp CurrencyConversionPair) Convert() (int, error) {
-	rate, err := strconv.Atoi(exchangeRates[ccp.CryptoName])
+func (ccp CurrencyConversionPair) ConvertToCrypto() (float64, error) {
+	rate, err := strconv.ParseFloat(exchangeRates[ccp.CryptoName], 64)
 	if err != nil {
 		return 0, err
 	}
 
-	res := amountToConvert * ccp.PctOfAmount * rate
+	res := amountToConvert * (ccp.PctOfAmount / float64(100)) * rate
 	return res, nil
 
 }
 
-func (ccp CurrencyConversionPair) amountToConvertPCT() int {
-	return amountToConvert * ccp.PctOfAmount
+func (ccp CurrencyConversionPair) amountToConvertPCT() float64 {
+	return amountToConvert * (ccp.PctOfAmount / 100)
 }
 func main() {
 
-	err := fetchExchangeRates()
+	err := FetchExchangeRates()
 	if err != nil {
 		log.Fatal("there was a problem with the API")
 	}
 
+	app := GetApp()
+
+	err = app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+var GetApp = getApp
+
+func getApp() *cli.App {
 	app := &cli.App{
 		Name:  "CLI Application",
 		Usage: "A simple CLI application",
@@ -80,51 +93,60 @@ func main() {
 			stringList := c.String("strings")
 			numberList := c.String("numbers")
 
-			// Validate and process numbers
-			numbers := strings.Split(numberList, ",")
-			sum := 0
-			for _, numStr := range numbers {
-				num, err := strconv.Atoi(strings.TrimSpace(numStr))
-				if err != nil {
-					return fmt.Errorf("invalid number: %v", numStr)
-				}
-				sum += num
+			currencyPairs, err := ValidateAnProcess(numberList, stringList)
+			if err != nil {
+				return err
 			}
 
-			if sum != 100 {
-				return fmt.Errorf("numbers must sum up to 100")
-			}
-
-			fmt.Printf("Command: %s\n", command)
-			fmt.Printf("Strings: %s\n", stringList)
-			fmt.Printf("Numbers: %s\n", numberList)
-
-			stringSlice := strings.Split(stringList, ",")
-			numberSlice := strings.Split(numberList, ",")
-
-			currencyPairs, err := MatchAndCreateStructs(stringSlice, numberSlice)
+			err = PrintCurrencyPairs(currencyPairs)
 
 			if err != nil {
-				log.Fatal(err)
-			}
-
-			for _, pair := range currencyPairs {
-				convert, err := pair.Convert()
-
-				if err != nil {
-					log.Fatal(err)
-				}
-				fmt.Printf("$%v => %v %v", pair.amountToConvertPCT(), convert, pair.CryptoName)
+				return err
 			}
 
 			return nil
 		},
 	}
+	return app
+}
 
-	err = app.Run(os.Args)
+func PrintCurrencyPairs(currencyPairs []CurrencyConversionPair) error {
+	for _, pair := range currencyPairs {
+		convert, err := pair.ConvertToCrypto()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("$%v => %v %v", pair.amountToConvertPCT(), convert, pair.CryptoName)
+	}
+	return nil
+}
+
+func ValidateAnProcess(numberList string, stringList string) ([]CurrencyConversionPair, error) {
+	// Validate and process numbers
+	numbers := strings.Split(numberList, ",")
+	sum := 0
+	for _, numStr := range numbers {
+		num, err := strconv.Atoi(strings.TrimSpace(numStr))
+		if err != nil {
+			return nil, fmt.Errorf("invalid number: %v", numStr)
+		}
+		sum += num
+	}
+
+	if sum != 100 {
+		return nil, fmt.Errorf("numbers must sum up to 100")
+	}
+
+	stringSlice := strings.Split(stringList, ",")
+	numberSlice := strings.Split(numberList, ",")
+
+	currencyPairs, err := MatchAndCreateStructs(stringSlice, numberSlice)
+
 	if err != nil {
 		log.Fatal(err)
 	}
+	return currencyPairs, nil
 }
 
 // Function to match strings and numbers by index and return a slice of structs
@@ -136,7 +158,7 @@ func MatchAndCreateStructs(stringsList []string, numbersList []string) ([]Curren
 	var pairs []CurrencyConversionPair
 
 	for i, s := range stringsList {
-		num, err := strconv.Atoi(numbersList[i])
+		num, err := strconv.ParseFloat(numbersList[i], 64)
 		if err != nil {
 			return nil, fmt.Errorf("error converting number at index %d: %v", i, err)
 		}
@@ -163,10 +185,13 @@ func fetchExchangeRates() error {
 		return fmt.Errorf("error reading response body: %v", err)
 	}
 
-	err = json.Unmarshal(body, &exchangeRates)
+	er := &ExchangeRates{}
+	err = json.Unmarshal(body, &er)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling JSON: %v", err)
 	}
+
+	exchangeRates = er.Data.Rates
 
 	return nil
 }

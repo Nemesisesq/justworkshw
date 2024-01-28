@@ -18,13 +18,11 @@ var FetchExchangeRates = fetchExchangeRates
 
 var amountToConvert float64
 
-// Global variable to store exchange rates
 var exchangeRates map[string]string
 
 var l, _ = zap.NewProduction(zap.AddCaller())
 var logger = l.Sugar()
 
-// Structs to match the JSON structure
 type ExchangeRates struct {
 	Data RatesData `json:"data"`
 }
@@ -162,8 +160,8 @@ func ValidateAnProcess(numberSlice []string, cryptoSlice []string) ([]CurrencyCo
 	return currencyPairs, nil
 }
 
-// Function to match strings and numbers by index and return a slice of structs
-func MatchAndCreateStructs(stringsList []string, numbersList []string) ([]CurrencyConversionPair, error) {
+func MatchAndCreateStructs(stringsList []string, numbersList []string) ([]Curre
+ncyConversionPair, error) {
 	if len(stringsList) != len(numbersList) {
 		return nil, fmt.Errorf("strings and numbers lists must be of the same length")
 	}

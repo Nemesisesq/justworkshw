@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 )
 
 var FetchExchangeRates = fetchExchangeRates
@@ -19,6 +20,9 @@ var amountToConvert float64
 
 // Global variable to store exchange rates
 var exchangeRates map[string]string
+
+var l, _ = zap.NewProduction(zap.AddCaller())
+var logger = l.Sugar()
 
 // Structs to match the JSON structure
 type ExchangeRates struct {
@@ -38,6 +42,7 @@ type CurrencyConversionPair struct {
 func (ccp CurrencyConversionPair) ConvertToCrypto() (float64, error) {
 	rate, err := strconv.ParseFloat(exchangeRates[ccp.CryptoName], 64)
 	if err != nil {
+		logger.Error(err)
 		return 0, err
 	}
 
@@ -53,13 +58,17 @@ func main() {
 
 	err := FetchExchangeRates()
 	if err != nil {
+		logger.Error(err)
 		log.Fatal("there was a problem with the API")
 	}
 
 	app := GetApp()
 
+	logger.Info(os.Args)
+
 	err = app.Run(os.Args)
 	if err != nil {
+		logger.Error(err)
 		log.Fatal(err)
 	}
 }
@@ -89,6 +98,7 @@ func getApp() *cli.App {
 			if command == "" {
 				return fmt.Errorf("a command is required")
 			}
+
 			var erramt error
 			amountToConvert, erramt = strconv.ParseFloat(c.Args().Get(0), 64)
 
@@ -99,14 +109,27 @@ func getApp() *cli.App {
 			stringList := c.String("strings")
 			numberList := c.String("numbers")
 
-			currencyPairs, err := ValidateAnProcess(numberList, stringList)
+			cryptoSlice := strings.Split(stringList, ",")
+			numberSlice := strings.Split(numberList, ",")
+
+			if crypto1 := c.Args().Get(1); crypto1 != "" {
+				cryptoSlice[0] = crypto1
+			}
+
+			if crypto2 := c.Args().Get(2); crypto2 != "" {
+				cryptoSlice[1] = crypto2
+			}
+
+			currencyPairs, err := ValidateAnProcess(numberSlice, cryptoSlice)
 			if err != nil {
+				logger.Error(err)
 				return err
 			}
 
 			err = PrintCurrencyPairs(currencyPairs)
 
 			if err != nil {
+				logger.Error(err)
 				return err
 			}
 
@@ -121,6 +144,7 @@ func PrintCurrencyPairs(currencyPairs []CurrencyConversionPair) error {
 		convert, err := pair.ConvertToCrypto()
 
 		if err != nil {
+			logger.Error(err)
 			log.Fatal(err)
 		}
 		fmt.Printf("\n$%v => %v %v\n", pair.amountToConvertPCT(), convert, pair.CryptoName)
@@ -128,28 +152,11 @@ func PrintCurrencyPairs(currencyPairs []CurrencyConversionPair) error {
 	return nil
 }
 
-func ValidateAnProcess(numberList string, stringList string) ([]CurrencyConversionPair, error) {
-	// Validate and process numbers
-	numbers := strings.Split(numberList, ",")
-	sum := 0
-	for _, numStr := range numbers {
-		num, err := strconv.Atoi(strings.TrimSpace(numStr))
-		if err != nil {
-			return nil, fmt.Errorf("invalid number: %v", numStr)
-		}
-		sum += num
-	}
-
-	if sum != 100 {
-		return nil, fmt.Errorf("numbers must sum up to 100")
-	}
-
-	stringSlice := strings.Split(stringList, ",")
-	numberSlice := strings.Split(numberList, ",")
-
-	currencyPairs, err := MatchAndCreateStructs(stringSlice, numberSlice)
+func ValidateAnProcess(numberSlice []string, cryptoSlice []string) ([]CurrencyConversionPair, error) {
+	currencyPairs, err := MatchAndCreateStructs(cryptoSlice, numberSlice)
 
 	if err != nil {
+		logger.Error(err)
 		log.Fatal(err)
 	}
 	return currencyPairs, nil
@@ -166,6 +173,7 @@ func MatchAndCreateStructs(stringsList []string, numbersList []string) ([]Curren
 	for i, s := range stringsList {
 		num, err := strconv.ParseFloat(numbersList[i], 64)
 		if err != nil {
+			logger.Error(err)
 			return nil, fmt.Errorf("error converting number at index %d: %v", i, err)
 		}
 
@@ -182,18 +190,21 @@ func fetchExchangeRates() error {
 
 	resp, err := http.Get(url)
 	if err != nil {
+		logger.Error(err)
 		return fmt.Errorf("error fetching data: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error(err)
 		return fmt.Errorf("error reading response body: %v", err)
 	}
 
 	er := &ExchangeRates{}
 	err = json.Unmarshal(body, &er)
 	if err != nil {
+		logger.Error(err)
 		return fmt.Errorf("error unmarshalling JSON: %v", err)
 	}
 

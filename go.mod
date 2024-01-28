@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/urfave/cli/v2 v2.27.1
+	go.uber.org/zap v1.26.0
 )
 
 require (
@@ -14,4 +15,5 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/smarty/assertions v1.15.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 )

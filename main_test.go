@@ -193,7 +193,7 @@ func TestValidateAnProcess(t *testing.T) {
 					PctOfAmount: 30,
 				},
 			}
-			got, err := ValidateAnProcess("70,30", "BTC,ETH")
+			got, err := ValidateAnProcess([]string{"70", "30"}, []string{"BTC", "ETH"})
 			So(got, ShouldResemble, want)
 			So(err, ShouldBeNil)
 
@@ -228,7 +228,10 @@ func TestPrintCurrencyPairs(t *testing.T) {
 
 func TestCli(t *testing.T) {
 	Convey("Testing The Main Function", t, func() {
-		os.Args[1] = "100"
+		og := os.Args
+
+		os.Args = []string{"justworks", "100", "BTC", "ETH"}
 		So(main, ShouldNotPanic)
+		os.Args = og
 	})
 }
